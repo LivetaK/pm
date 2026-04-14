@@ -1,0 +1,16 @@
+{
+  "clientType": "company",
+  "name": "UAB Vilniaus Video",
+  "legalName": "UAB Vilniaus Video",
+  "email": "saskaitos@vilniausvideo.lt",
+  "phone": "+37060111111",
+  "companyCode": "302222222",
+  "vatCode": "LT100001111111",
+  "addressLine1": "Ukmerges g. 126",
+  "addressLine2": "4 aukstas",
+  "city": "Vilnius",
+  "postalCode": "08100",
+  "countryCode": "LT",
+  "notes": "Atnaujinta kontaktine informacija demonstracijos metu.",
+  "isActive": true
+}

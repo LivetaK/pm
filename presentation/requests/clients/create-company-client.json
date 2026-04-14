@@ -1,0 +1,15 @@
+{
+  "clientType": "company",
+  "name": "UAB Presentation Partner",
+  "legalName": "UAB Presentation Partner",
+  "email": "billing@presentationpartner.lt",
+  "phone": "+37067770000",
+  "companyCode": "305123123",
+  "vatCode": "LT100001231231",
+  "addressLine1": "Konstitucijos pr. 7",
+  "addressLine2": "12 aukstas",
+  "city": "Vilnius",
+  "postalCode": "09308",
+  "countryCode": "LT",
+  "notes": "Naudoti demonstracijai, kai reikia parodyti naujo įmonės kliento sukūrimą."
+}

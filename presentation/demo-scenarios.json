@@ -1,0 +1,62 @@
+{
+  "scenarios": [
+    {
+      "name": "Register a fresh user",
+      "method": "POST",
+      "path": "/api/v1/auth/register",
+      "bodyFile": "presentation/requests/auth/register-new-user.json"
+    },
+    {
+      "name": "Login with seeded demo user",
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "bodyFile": "presentation/requests/auth/login-primary-user.json"
+    },
+    {
+      "name": "Refresh access token",
+      "method": "POST",
+      "path": "/api/v1/auth/refresh",
+      "bodyFile": "presentation/requests/auth/refresh-token.json"
+    },
+    {
+      "name": "View current profile",
+      "method": "GET",
+      "path": "/api/v1/users/me"
+    },
+    {
+      "name": "Update current profile",
+      "method": "PUT",
+      "path": "/api/v1/users/me",
+      "bodyFile": "presentation/requests/users/update-profile.json"
+    },
+    {
+      "name": "List current user's clients",
+      "method": "GET",
+      "path": "/api/v1/clients"
+    },
+    {
+      "name": "Create company client",
+      "method": "POST",
+      "path": "/api/v1/clients",
+      "bodyFile": "presentation/requests/clients/create-company-client.json"
+    },
+    {
+      "name": "Create individual client",
+      "method": "POST",
+      "path": "/api/v1/clients",
+      "bodyFile": "presentation/requests/clients/create-individual-client.json"
+    },
+    {
+      "name": "Update seeded company client",
+      "method": "PUT",
+      "path": "/api/v1/clients/4423dc96-64da-4825-af57-900fb01c1d81",
+      "bodyFile": "presentation/requests/clients/update-seeded-company-client.json"
+    },
+    {
+      "name": "Logout current session",
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "bodyFile": "presentation/requests/auth/logout.json"
+    }
+  ]
+}
