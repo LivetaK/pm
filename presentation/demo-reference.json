@@ -1,0 +1,56 @@
+{
+  "baseUrls": {
+    "http": "http://localhost:5216",
+    "https": "https://localhost:7139"
+  },
+  "seededUsers": [
+    {
+      "label": "Primary demo user",
+      "userId": "f5af0dbc-b5d3-43cc-a265-5372cbf1a3c8",
+      "email": "roberta.demo@pm.local",
+      "password": "PmDemo123!",
+      "fullName": "Roberta Demo",
+      "seededRefreshToken": "pm-demo-refresh-roberta-2026"
+    },
+    {
+      "label": "Secondary demo user",
+      "userId": "efed3d76-369d-4993-a5ba-41752ebd94f9",
+      "email": "liveta.demo@pm.local",
+      "password": "PmDemo123!",
+      "fullName": "Liveta Demo",
+      "seededRefreshToken": "pm-demo-refresh-liveta-2026"
+    }
+  ],
+  "seededClients": [
+    {
+      "clientId": "4423dc96-64da-4825-af57-900fb01c1d81",
+      "ownerUserId": "f5af0dbc-b5d3-43cc-a265-5372cbf1a3c8",
+      "name": "UAB Vilniaus Video",
+      "type": "company"
+    },
+    {
+      "clientId": "98bdd55c-eb75-44da-9d15-c1e7e91c79ff",
+      "ownerUserId": "f5af0dbc-b5d3-43cc-a265-5372cbf1a3c8",
+      "name": "Austeja Petrauskaite",
+      "type": "individual"
+    },
+    {
+      "clientId": "ddbcb14b-beb5-4507-85ec-bb50ce74b4b7",
+      "ownerUserId": "f5af0dbc-b5d3-43cc-a265-5372cbf1a3c8",
+      "name": "MB Siaures Kryptis",
+      "type": "company"
+    },
+    {
+      "clientId": "6c60d78c-aa66-4c7e-b05d-db051cfa9800",
+      "ownerUserId": "efed3d76-369d-4993-a5ba-41752ebd94f9",
+      "name": "UAB Baltic Growth",
+      "type": "company"
+    },
+    {
+      "clientId": "cc33a8fa-a96a-4502-821b-839701b71ebc",
+      "ownerUserId": "efed3d76-369d-4993-a5ba-41752ebd94f9",
+      "name": "Jonas Paulauskas",
+      "type": "individual"
+    }
+  ]
+}

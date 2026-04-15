@@ -11,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<DapperContext>();
         services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<DemoDataSeeder>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<ITokenService, JwtTokenService>();

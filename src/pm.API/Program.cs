@@ -7,12 +7,16 @@ using pm.Application.Settings;
 using pm.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+var jwtSettingsSection = builder.Configuration.GetRequiredSection("JwtSettings");
+var jwtSettings = jwtSettingsSection.Get<JwtSettings>()
+                  ?? throw new InvalidOperationException("Missing JwtSettings configuration.");
 
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+ValidateJwtSettings(jwtSettings);
+
+builder.Services.Configure<JwtSettings>(jwtSettingsSection);
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
 
-var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -61,6 +65,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 await app.Services.GetRequiredService<DatabaseMigrator>().MigrateAsync();
+await app.Services.GetRequiredService<DemoDataSeeder>().SeedAsync();
 
 app.UseExceptionHandler(appBuilder =>
 {
@@ -91,3 +96,22 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+static void ValidateJwtSettings(JwtSettings settings)
+{
+    if (string.IsNullOrWhiteSpace(settings.Secret))
+    {
+        throw new InvalidOperationException(
+            "JwtSettings:Secret is required. Configure it in appsettings or via the JwtSettings__Secret environment variable.");
+    }
+
+    if (string.IsNullOrWhiteSpace(settings.Issuer))
+    {
+        throw new InvalidOperationException("JwtSettings:Issuer is required.");
+    }
+
+    if (string.IsNullOrWhiteSpace(settings.Audience))
+    {
+        throw new InvalidOperationException("JwtSettings:Audience is required.");
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "clientType": "individual",
+  "name": "Matas Kazlauskas",
+  "legalName": null,
+  "email": "matas.kazlauskas@example.com",
+  "phone": "+37068880000",
+  "companyCode": null,
+  "vatCode": null,
+  "addressLine1": "Vytauto g. 14",
+  "addressLine2": null,
+  "city": "Panevezys",
+  "postalCode": "35175",
+  "countryCode": "LT",
+  "notes": "Naudoti individualaus kliento tipo demonstracijai."
+}
