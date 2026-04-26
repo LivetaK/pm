@@ -39,7 +39,8 @@ public class AuthService : IAuthService
             Id = Guid.NewGuid(),
             Email = request.Email.ToLowerInvariant(),
             PasswordHash = _passwordHasher.Hash(request.Password),
-            FullName = request.FullName,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
             IsActive = true,
             IsEmailVerified = false,
             CreatedAt = DateTime.UtcNow,
@@ -99,10 +100,11 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId)
             ?? throw new KeyNotFoundException("User not found.");
 
-        user.FullName = request.FullName;
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
         user.Phone = request.Phone;
-        user.PreferredLanguage = request.PreferredLanguage;
-        user.Timezone = request.Timezone;
+        if (request.PreferredLanguage != null) user.PreferredLanguage = request.PreferredLanguage;
+        if (request.Timezone != null) user.Timezone = request.Timezone;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _userRepository.UpdateAsync(user);
@@ -139,6 +141,7 @@ public class AuthService : IAuthService
     }
 
     private static UserResponse MapToResponse(User user) =>
-        new(user.Id, user.Email, user.FullName, user.Phone,
-            user.PreferredLanguage, user.Timezone, user.IsEmailVerified, user.CreatedAt);
+        new(user.Id, user.Email, user.FirstName, user.LastName, user.Phone,
+            user.PreferredLanguage, user.Timezone, user.DefaultCurrency,
+            user.DefaultPaymentTermsDays, user.IsEmailVerified, user.CreatedAt);
 }

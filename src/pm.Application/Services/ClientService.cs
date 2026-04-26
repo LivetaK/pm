@@ -30,17 +30,21 @@ public class ClientService : IClientService
     public async Task<ClientResponse> CreateAsync(Guid userId, CreateClientRequest request)
     {
         var now = DateTime.UtcNow;
+        ValidateClientName(request.FirstName, request.LastName, request.CompanyName);
+
         var client = new Client
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             ClientType = NormalizeClientType(request.ClientType),
-            Name = request.Name,
-            LegalName = request.LegalName,
-            Email = request.Email,
-            Phone = request.Phone,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            CompanyName = request.CompanyName,
             CompanyCode = request.CompanyCode,
             VatCode = request.VatCode,
+            Email = request.Email,
+            Phone = request.Phone,
+            BankIban = request.BankIban,
             AddressLine1 = request.AddressLine1,
             AddressLine2 = request.AddressLine2,
             City = request.City,
@@ -61,13 +65,17 @@ public class ClientService : IClientService
         var client = await _clientRepository.GetByIdAsync(userId, id)
             ?? throw new KeyNotFoundException("Client not found.");
 
+        ValidateClientName(request.FirstName, request.LastName, request.CompanyName);
+
         client.ClientType = NormalizeClientType(request.ClientType);
-        client.Name = request.Name;
-        client.LegalName = request.LegalName;
-        client.Email = request.Email;
-        client.Phone = request.Phone;
+        client.FirstName = request.FirstName;
+        client.LastName = request.LastName;
+        client.CompanyName = request.CompanyName;
         client.CompanyCode = request.CompanyCode;
         client.VatCode = request.VatCode;
+        client.Email = request.Email;
+        client.Phone = request.Phone;
+        client.BankIban = request.BankIban;
         client.AddressLine1 = request.AddressLine1;
         client.AddressLine2 = request.AddressLine2;
         client.City = request.City;
@@ -97,12 +105,14 @@ public class ClientService : IClientService
             client.Id,
             client.UserId,
             client.ClientType,
-            client.Name,
-            client.LegalName,
-            client.Email,
-            client.Phone,
+            client.FirstName,
+            client.LastName,
+            client.CompanyName,
             client.CompanyCode,
             client.VatCode,
+            client.Email,
+            client.Phone,
+            client.BankIban,
             client.AddressLine1,
             client.AddressLine2,
             client.City,
@@ -112,6 +122,12 @@ public class ClientService : IClientService
             client.IsActive,
             client.CreatedAt,
             client.UpdatedAt);
+
+    private static void ValidateClientName(string? firstName, string? lastName, string? companyName)
+    {
+        if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(companyName))
+            throw new InvalidOperationException("At least first name or company name must be provided.");
+    }
 
     private static string NormalizeClientType(string? clientType)
     {

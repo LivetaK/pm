@@ -5,12 +5,14 @@ public class Client
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string ClientType { get; set; } = "individual";
-    public string Name { get; set; } = string.Empty;
-    public string? LegalName { get; set; }
-    public string? Email { get; set; }
-    public string? Phone { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? CompanyName { get; set; }
     public string? CompanyCode { get; set; }
     public string? VatCode { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? BankIban { get; set; }
     public string? AddressLine1 { get; set; }
     public string? AddressLine2 { get; set; }
     public string? City { get; set; }
@@ -22,5 +24,3 @@ public class Client
     public DateTime UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
 }
-
-

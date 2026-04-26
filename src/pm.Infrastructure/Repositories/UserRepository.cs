@@ -19,28 +19,20 @@ public class UserRepository : IUserRepository
         return await conn.QuerySingleOrDefaultAsync<User>(
             """
             SELECT id, email,
-                   password_hash        AS PasswordHash,
-                   is_email_verified    AS IsEmailVerified,
-                   is_active            AS IsActive,
-                   full_name            AS FullName,
+                   password_hash                AS PasswordHash,
+                   is_email_verified            AS IsEmailVerified,
+                   is_active                    AS IsActive,
+                   first_name                   AS FirstName,
+                   last_name                    AS LastName,
                    phone,
-                   preferred_language   AS PreferredLanguage,
+                   preferred_language           AS PreferredLanguage,
                    timezone,
-                   avatar_url           AS AvatarUrl,
-                   company_name         AS CompanyName,
-                   company_code         AS CompanyCode,
-                   vat_code             AS VatCode,
-                   address_line1        AS AddressLine1,
-                   address_line2        AS AddressLine2,
-                   city,
-                   postal_code          AS PostalCode,
-                   country_code         AS CountryCode,
-                   default_currency     AS DefaultCurrency,
-                   default_payment_terms_days AS DefaultPaymentTermsDays,
-                   last_login_at        AS LastLoginAt,
-                   created_at           AS CreatedAt,
-                   updated_at           AS UpdatedAt,
-                   deleted_at           AS DeletedAt
+                   default_currency             AS DefaultCurrency,
+                   default_payment_terms_days   AS DefaultPaymentTermsDays,
+                   last_login_at                AS LastLoginAt,
+                   created_at                   AS CreatedAt,
+                   updated_at                   AS UpdatedAt,
+                   deleted_at                   AS DeletedAt
             FROM users WHERE id = @Id AND deleted_at IS NULL
             """, new { Id = id });
     }
@@ -51,28 +43,20 @@ public class UserRepository : IUserRepository
         return await conn.QuerySingleOrDefaultAsync<User>(
             """
             SELECT id, email,
-                   password_hash        AS PasswordHash,
-                   is_email_verified    AS IsEmailVerified,
-                   is_active            AS IsActive,
-                   full_name            AS FullName,
+                   password_hash                AS PasswordHash,
+                   is_email_verified            AS IsEmailVerified,
+                   is_active                    AS IsActive,
+                   first_name                   AS FirstName,
+                   last_name                    AS LastName,
                    phone,
-                   preferred_language   AS PreferredLanguage,
+                   preferred_language           AS PreferredLanguage,
                    timezone,
-                   avatar_url           AS AvatarUrl,
-                   company_name         AS CompanyName,
-                   company_code         AS CompanyCode,
-                   vat_code             AS VatCode,
-                   address_line1        AS AddressLine1,
-                   address_line2        AS AddressLine2,
-                   city,
-                   postal_code          AS PostalCode,
-                   country_code         AS CountryCode,
-                   default_currency     AS DefaultCurrency,
-                   default_payment_terms_days AS DefaultPaymentTermsDays,
-                   last_login_at        AS LastLoginAt,
-                   created_at           AS CreatedAt,
-                   updated_at           AS UpdatedAt,
-                   deleted_at           AS DeletedAt
+                   default_currency             AS DefaultCurrency,
+                   default_payment_terms_days   AS DefaultPaymentTermsDays,
+                   last_login_at                AS LastLoginAt,
+                   created_at                   AS CreatedAt,
+                   updated_at                   AS UpdatedAt,
+                   deleted_at                   AS DeletedAt
             FROM users WHERE email = @Email AND deleted_at IS NULL
             """, new { Email = email });
     }
@@ -83,9 +67,13 @@ public class UserRepository : IUserRepository
         await conn.ExecuteAsync(
             """
             INSERT INTO users (id, email, password_hash, is_email_verified, is_active,
-                               full_name, created_at, updated_at)
+                               first_name, last_name, preferred_language, timezone,
+                               default_currency, default_payment_terms_days,
+                               created_at, updated_at)
             VALUES (@Id, @Email, @PasswordHash, @IsEmailVerified, @IsActive,
-                    @FullName, @CreatedAt, @UpdatedAt)
+                    @FirstName, @LastName, @PreferredLanguage, @Timezone,
+                    @DefaultCurrency, @DefaultPaymentTermsDays,
+                    @CreatedAt, @UpdatedAt)
             """, user);
         return user;
     }
@@ -96,11 +84,12 @@ public class UserRepository : IUserRepository
         await conn.ExecuteAsync(
             """
             UPDATE users
-            SET full_name          = @FullName,
-                phone              = @Phone,
-                preferred_language = @PreferredLanguage,
-                timezone           = @Timezone,
-                updated_at         = @UpdatedAt
+            SET first_name                 = @FirstName,
+                last_name                  = @LastName,
+                phone                      = @Phone,
+                preferred_language         = @PreferredLanguage,
+                timezone                   = @Timezone,
+                updated_at                 = @UpdatedAt
             WHERE id = @Id
             """, user);
     }
