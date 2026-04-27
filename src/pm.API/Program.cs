@@ -64,7 +64,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-await app.Services.GetRequiredService<DatabaseMigrator>().MigrateAsync();
 await app.Services.GetRequiredService<DemoDataSeeder>().SeedAsync();
 
 app.UseExceptionHandler(appBuilder =>
@@ -75,9 +74,11 @@ app.UseExceptionHandler(appBuilder =>
         var (status, message) = ex switch
         {
             UnauthorizedAccessException => (401, ex.Message),
-            KeyNotFoundException => (404, ex.Message),
-            InvalidOperationException => (409, ex.Message),
-            _ => (500, "An unexpected error occurred.")
+            KeyNotFoundException        => (404, ex.Message),
+            InvalidOperationException   => (409, ex.Message),
+            _ => (500, app.Environment.IsDevelopment()
+                    ? $"{ex.GetType().Name}: {ex.Message}"
+                    : "An unexpected error occurred.")
         };
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/json";

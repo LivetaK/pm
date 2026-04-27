@@ -108,13 +108,13 @@ public class UserRepository : IUserRepository
         return await conn.QuerySingleOrDefaultAsync<UserSession>(
             """
             SELECT id,
-                   user_id              AS UserId,
-                   refresh_token_hash   AS RefreshTokenHash,
-                   user_agent           AS UserAgent,
-                   ip_address           AS IpAddress,
-                   expires_at           AS ExpiresAt,
-                   revoked_at           AS RevokedAt,
-                   created_at           AS CreatedAt
+                   user_id                  AS UserId,
+                   refresh_token_hash       AS RefreshTokenHash,
+                   user_agent               AS UserAgent,
+                   ip_address::text         AS IpAddress,
+                   expires_at               AS ExpiresAt,
+                   revoked_at               AS RevokedAt,
+                   created_at               AS CreatedAt
             FROM user_sessions WHERE refresh_token_hash = @TokenHash
             """, new { TokenHash = tokenHash });
     }

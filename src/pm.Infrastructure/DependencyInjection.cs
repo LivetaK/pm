@@ -9,11 +9,15 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
+        Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+
         services.AddSingleton<DapperContext>();
-        services.AddSingleton<DatabaseMigrator>();
-        services.AddSingleton<DemoDataSeeder>();
+services.AddSingleton<DemoDataSeeder>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         return services;
