@@ -20,6 +20,7 @@ services.AddSingleton<DemoDataSeeder>();
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
         return services;
     }
 }

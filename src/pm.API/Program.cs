@@ -14,6 +14,7 @@ var jwtSettings = jwtSettingsSection.Get<JwtSettings>()
 ValidateJwtSettings(jwtSettings);
 
 builder.Services.Configure<JwtSettings>(jwtSettingsSection);
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
 

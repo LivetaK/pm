@@ -196,6 +196,18 @@ public class InvoiceRepository : IInvoiceRepository
             });
     }
 
+    public async Task MarkSentAsync(Guid userId, Guid id, DateTime sentAt)
+    {
+        using var conn = _context.CreateConnection();
+        await conn.ExecuteAsync(
+            """
+            UPDATE invoices
+            SET status = 'sent'::invoice_status, sent_at = @SentAt, updated_at = @SentAt
+            WHERE id = @Id AND user_id = @UserId AND deleted_at IS NULL
+            """,
+            new { Id = id, UserId = userId, SentAt = sentAt });
+    }
+
     private static async Task InsertLineItemsAsync(System.Data.IDbConnection conn,
         IReadOnlyList<InvoiceLineItem> lineItems, System.Data.IDbTransaction tx)
     {

@@ -47,6 +47,20 @@ public class InvoicesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{id:guid}/send")]
+    public async Task<IActionResult> Send(Guid id)
+    {
+        var result = await _invoiceService.SendAsync(GetUserId(), id);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/reminders")]
+    public async Task<IActionResult> SendReminder(Guid id)
+    {
+        var result = await _invoiceService.SendReminderAsync(GetUserId(), id);
+        return Ok(result);
+    }
+
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

@@ -8,4 +8,6 @@ public interface IInvoiceService
     Task<InvoiceResponse> GetByIdAsync(Guid userId, Guid id);
     Task<InvoiceResponse> CreateAsync(Guid userId, CreateInvoiceRequest request);
     Task<InvoiceResponse> UpdateAsync(Guid userId, Guid id, UpdateInvoiceRequest request);
+    Task<InvoiceResponse> SendAsync(Guid userId, Guid id);
+    Task<InvoiceResponse> SendReminderAsync(Guid userId, Guid id);
 }

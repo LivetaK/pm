@@ -7,10 +7,20 @@ namespace pm.Application.Services;
 public class InvoiceService : IInvoiceService
 {
     private readonly IInvoiceRepository _invoiceRepository;
+    private readonly IClientRepository _clientRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
 
-    public InvoiceService(IInvoiceRepository invoiceRepository)
+    public InvoiceService(
+        IInvoiceRepository invoiceRepository,
+        IClientRepository clientRepository,
+        IUserRepository userRepository,
+        IEmailService emailService)
     {
         _invoiceRepository = invoiceRepository;
+        _clientRepository = clientRepository;
+        _userRepository = userRepository;
+        _emailService = emailService;
     }
 
     public async Task<IReadOnlyList<InvoiceResponse>> GetAllAsync(Guid userId)
@@ -97,6 +107,61 @@ public class InvoiceService : IInvoiceService
         await _invoiceRepository.UpdateAsync(invoice, lineItems);
 
         invoice.LineItems = lineItems;
+        return MapToResponse(invoice);
+    }
+
+    public async Task<InvoiceResponse> SendAsync(Guid userId, Guid id)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(userId, id)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (invoice.Status is "cancelled")
+            throw new InvalidOperationException("Cannot send a cancelled invoice.");
+
+        if (invoice.Status is "paid")
+            throw new InvalidOperationException("Cannot send a paid invoice.");
+
+        var client = await _clientRepository.GetByIdAsync(userId, invoice.ClientId)
+            ?? throw new KeyNotFoundException("Client not found.");
+
+        var sender = await _userRepository.GetByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        await _emailService.SendInvoiceAsync(invoice, client, sender);
+
+        var sentAt = DateTime.UtcNow;
+        var previousStatus = invoice.Status;
+        await _invoiceRepository.MarkSentAsync(userId, id, sentAt);
+        await _invoiceRepository.AddStatusHistoryAsync(invoice.Id, userId, previousStatus, "sent");
+
+        invoice.Status = "sent";
+        invoice.SentAt = sentAt;
+        invoice.UpdatedAt = sentAt;
+        return MapToResponse(invoice);
+    }
+
+    public async Task<InvoiceResponse> SendReminderAsync(Guid userId, Guid id)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(userId, id)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (invoice.Status is "draft")
+            throw new InvalidOperationException("Cannot send a reminder for a draft invoice. Send the invoice first.");
+
+        if (invoice.Status is "paid")
+            throw new InvalidOperationException("Invoice is already paid.");
+
+        if (invoice.Status is "cancelled")
+            throw new InvalidOperationException("Cannot send a reminder for a cancelled invoice.");
+
+        var client = await _clientRepository.GetByIdAsync(userId, invoice.ClientId)
+            ?? throw new KeyNotFoundException("Client not found.");
+
+        var sender = await _userRepository.GetByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        await _emailService.SendInvoiceReminderAsync(invoice, client, sender);
+
         return MapToResponse(invoice);
     }
 
