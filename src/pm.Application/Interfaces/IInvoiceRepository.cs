@@ -11,4 +11,5 @@ public interface IInvoiceRepository
     Task<int> GetInvoiceCountForYearAsync(Guid userId, int year);
     Task AddStatusHistoryAsync(Guid invoiceId, Guid changedByUserId, string? fromStatus, string toStatus);
     Task MarkSentAsync(Guid userId, Guid id, DateTime sentAt);
+    Task MarkAsPaidAsync(Guid userId, Guid id, decimal amount, DateTime paidAt);
 }

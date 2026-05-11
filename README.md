@@ -30,7 +30,7 @@ It does **not** yet implement:
 
 - `Projekto valdymas`
 - `Projekto eiga`
-- `Mokėjimų procesas`
+- `Mokėjimų procesas` (Stripe checkout link creation + webhook handling are now available)
 - `Statistika`
 
 That means the project currently supports account and client management, but not yet the main MVP flow described in the summary:
@@ -52,6 +52,8 @@ Implemented endpoints:
 - `POST /api/v1/clients`
 - `PUT /api/v1/clients/{id}`
 - `DELETE /api/v1/clients/{id}`
+- `POST /api/v1/invoices/{id}/create-payment-link`
+- `POST /api/v1/payments/webhook`
 
 Main entry point:
 
@@ -141,6 +143,62 @@ If started successfully:
 - demo seed data will run
 - API will be available based on [`launchSettings.json`](/Users/adojas/RiderProjects/pm/src/pm.API/Properties/launchSettings.json:1)
 - default local URLs are `http://localhost:5216` and `https://localhost:7139`
+
+## Stripe Setup and Test Flow
+
+Stripe is configured through the root [`.env`](/Users/adojas/RiderProjects/pm/.env:1) file and is loaded automatically when the API starts.
+
+Required `.env` entries:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PUBLISHABLE_KEY` (optional for the current API flow)
+
+The API uses these values to create Stripe Checkout sessions and verify incoming webhook events.
+
+Recommended local Stripe test flow:
+
+1. Start the API:
+
+   ```bash
+   dotnet run --project src/pm.API/pm.API.csproj
+   ```
+
+2. Start Stripe CLI webhook forwarding in a second terminal:
+
+   ```bash
+   stripe listen --forward-to localhost:5216/api/v1/payments/webhook
+   ```
+
+3. Copy the webhook signing secret printed by Stripe CLI and place it in `.env` as `STRIPE_WEBHOOK_SECRET`, then restart the API if you changed it.
+
+4. Run the end-to-end helper script from the repository root:
+
+   ```bash
+   chmod +x scripts/test-stripe.sh
+   ./scripts/test-stripe.sh
+   ```
+
+What the script does:
+
+- logs in with the demo user
+- creates a client
+- creates an invoice
+- calls `POST /api/v1/invoices/{id}/create-payment-link`
+- opens the Stripe Checkout page in your browser
+
+Use Stripe test card details in Checkout:
+
+- card number: `4242 4242 4242 4242`
+- any future expiry date
+- any CVC
+
+To verify the payment after checkout, query the payments endpoint for the invoice:
+
+```bash
+curl -s -X GET "http://localhost:5216/api/v1/payments?invoiceId=<invoice_id>" \
+  -H "Authorization: Bearer <access_token>" | jq .
+```
 
 ## Presentation Demo Script
 
@@ -301,7 +359,7 @@ Why this is the next step:
 - no frontend project is present
 - no project entity/module exists yet
 - no invoice generation exists yet
-- no Stripe/payment integration exists yet
+- Stripe/payment integration is present for Checkout-link creation and webhook handling
 - no statistics endpoint exists yet
 - client validation is currently weaker than Jira acceptance criteria require
 

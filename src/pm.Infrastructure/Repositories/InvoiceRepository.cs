@@ -208,6 +208,27 @@ public class InvoiceRepository : IInvoiceRepository
             new { Id = id, UserId = userId, SentAt = sentAt });
     }
 
+    public async Task MarkAsPaidAsync(Guid userId, Guid id, decimal amount, DateTime paidAt)
+    {
+        using var conn = _context.CreateConnection();
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+
+        await conn.ExecuteAsync(
+            """
+            UPDATE invoices
+            SET amount_paid = amount_paid + @Amount,
+                status = 'paid'::invoice_status,
+                updated_at = @PaidAt
+            WHERE id = @Id AND user_id = @UserId AND deleted_at IS NULL
+            """,
+            new { Id = id, UserId = userId, Amount = amount, PaidAt = paidAt }, tx);
+
+        await AddStatusHistoryAsync(id, userId, null, "paid");
+
+        tx.Commit();
+    }
+
     private static async Task InsertLineItemsAsync(System.Data.IDbConnection conn,
         IReadOnlyList<InvoiceLineItem> lineItems, System.Data.IDbTransaction tx)
     {

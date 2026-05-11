@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
@@ -5,6 +7,36 @@ using Microsoft.IdentityModel.Tokens;
 using pm.Application;
 using pm.Application.Settings;
 using pm.Infrastructure;
+
+var envFile = FindEnvFile();
+if (!string.IsNullOrWhiteSpace(envFile))
+{
+    foreach (var raw in File.ReadAllLines(envFile))
+    {
+        var line = raw.Trim();
+        if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+        var idx = line.IndexOf('=');
+        if (idx <= 0) continue;
+        var key = line.Substring(0, idx).Trim();
+        var val = line.Substring(idx + 1).Trim();
+        if (string.IsNullOrEmpty(key)) continue;
+        switch (key)
+        {
+            case "STRIPE_SECRET_KEY":
+                Environment.SetEnvironmentVariable("Stripe__ApiKey", val);
+                break;
+            case "STRIPE_WEBHOOK_SECRET":
+                Environment.SetEnvironmentVariable("Stripe__WebhookSecret", val);
+                break;
+            case "STRIPE_PUBLISHABLE_KEY":
+                Environment.SetEnvironmentVariable("Stripe__PublishableKey", val);
+                break;
+            default:
+                Environment.SetEnvironmentVariable(key, val);
+                break;
+        }
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtSettingsSection = builder.Configuration.GetRequiredSection("JwtSettings");
@@ -15,6 +47,7 @@ ValidateJwtSettings(jwtSettings);
 
 builder.Services.Configure<JwtSettings>(jwtSettingsSection);
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
 
@@ -117,3 +150,30 @@ static void ValidateJwtSettings(JwtSettings settings)
         throw new InvalidOperationException("JwtSettings:Audience is required.");
     }
 }
+
+static string? FindEnvFile()
+{
+    var locations = new[]
+    {
+        Directory.GetCurrentDirectory(),
+        AppContext.BaseDirectory
+    };
+
+    foreach (var start in locations)
+    {
+        var current = new DirectoryInfo(start);
+        while (current != null)
+        {
+            var candidate = Path.Combine(current.FullName, ".env");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+    }
+
+    return null;
+}
+

@@ -61,6 +61,13 @@ public class InvoicesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{id:guid}/create-payment-link")]
+    public async Task<IActionResult> CreatePaymentLink(Guid id)
+    {
+        var url = await _invoiceService.CreatePaymentLinkAsync(GetUserId(), id);
+        return Ok(new { url });
+    }
+
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);

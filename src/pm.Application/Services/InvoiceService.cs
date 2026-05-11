@@ -10,6 +10,7 @@ public class InvoiceService : IInvoiceService
     private readonly IClientRepository _clientRepository;
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
+    private readonly IStripeService _stripeService;
 
     public InvoiceService(
         IInvoiceRepository invoiceRepository,
@@ -21,6 +22,18 @@ public class InvoiceService : IInvoiceService
         _clientRepository = clientRepository;
         _userRepository = userRepository;
         _emailService = emailService;
+        _stripeService = null!;
+    }
+    
+    public InvoiceService(
+        IInvoiceRepository invoiceRepository,
+        IClientRepository clientRepository,
+        IUserRepository userRepository,
+        IEmailService emailService,
+        IStripeService stripeService)
+        : this(invoiceRepository, clientRepository, userRepository, emailService)
+    {
+        _stripeService = stripeService;
     }
 
     public async Task<IReadOnlyList<InvoiceResponse>> GetAllAsync(Guid userId)
@@ -68,7 +81,6 @@ public class InvoiceService : IInvoiceService
             UpdatedAt = now
         };
 
-        // Assign invoice id to line items
         foreach (var li in lineItems) li.InvoiceId = invoice.Id;
 
         await _invoiceRepository.CreateAsync(invoice, lineItems);
@@ -163,6 +175,24 @@ public class InvoiceService : IInvoiceService
         await _emailService.SendInvoiceReminderAsync(invoice, client, sender);
 
         return MapToResponse(invoice);
+    }
+
+    public async Task<string> CreatePaymentLinkAsync(Guid userId, Guid id)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(userId, id)
+            ?? throw new KeyNotFoundException("Invoice not found.");
+
+        if (invoice.Status is "cancelled")
+            throw new InvalidOperationException("Cannot create payment link for a cancelled invoice.");
+
+        if (invoice.Status is "paid")
+            throw new InvalidOperationException("Invoice is already paid.");
+
+        if (_stripeService is null)
+            throw new InvalidOperationException("Payment provider is not configured.");
+
+        var url = await _stripeService.CreateCheckoutSessionAsync(invoice);
+        return url;
     }
 
     private async Task<string> GenerateInvoiceNumberAsync(Guid userId, int year)
