@@ -17,6 +17,20 @@ public class Invoice
     public decimal VatAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
+    public string? PaymentLinkUrl { get; set; }
+    public string PaymentLinkStatus { get; set; } = "not_created";
+    public DateTime? PaymentLinkGeneratedAt { get; set; }
+    public DateTime? PaymentLinkDeactivatedAt { get; set; }
+    public string? PaymentLinkError { get; set; }
+    public string? PdfFilePath { get; set; }
+    public DateTime? PdfGeneratedAt { get; set; }
+    public string? EmailSendStatus { get; set; }
+    public DateTime? EmailSentAt { get; set; }
+    public string? EmailLastError { get; set; }
+    public string? ReminderSendStatus { get; set; }
+    public DateTime? ReminderLastSentAt { get; set; }
+    public int ReminderCount { get; set; }
+    public string? ReminderLastError { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

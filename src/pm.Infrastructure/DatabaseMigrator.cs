@@ -79,11 +79,15 @@ public class DatabaseMigrator
             CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
                 ON user_sessions (expires_at) WHERE revoked_at IS NULL;
 
+            DO $$ BEGIN
+                CREATE TYPE client_type AS ENUM ('individual','company');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
             -- CLIENTS
             CREATE TABLE IF NOT EXISTS clients (
                 id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id         UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                client_type     VARCHAR(20) NOT NULL DEFAULT 'individual',
+                client_type     client_type NOT NULL DEFAULT 'individual',
                 first_name      VARCHAR(100),
                 last_name       VARCHAR(100),
                 company_name    VARCHAR(255),
@@ -108,6 +112,19 @@ public class DatabaseMigrator
                 ),
                 CONSTRAINT uq_clients_company_code UNIQUE (user_id, company_code)
             );
+
+            DO $$ BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'clients'
+                      AND column_name = 'client_type'
+                      AND udt_name <> 'client_type'
+                ) THEN
+                    ALTER TABLE clients
+                    ALTER COLUMN client_type TYPE client_type
+                    USING client_type::client_type;
+                END IF;
+            END $$;
 
             CREATE INDEX IF NOT EXISTS idx_clients_user_id
                 ON clients (user_id) WHERE deleted_at IS NULL;
@@ -210,12 +227,68 @@ public class DatabaseMigrator
                 total_amount        NUMERIC(12,2)   NOT NULL DEFAULT 0,
                 amount_paid         NUMERIC(12,2)   NOT NULL DEFAULT 0,
                 amount_due          NUMERIC(12,2)   GENERATED ALWAYS AS (total_amount - amount_paid) STORED,
+                payment_link_url    TEXT,
+                payment_link_status VARCHAR(20)     NOT NULL DEFAULT 'not_created',
+                payment_link_generated_at TIMESTAMPTZ,
+                payment_link_deactivated_at TIMESTAMPTZ,
+                payment_link_error  TEXT,
+                pdf_file_path       TEXT,
+                pdf_generated_at    TIMESTAMPTZ,
+                email_send_status   VARCHAR(20),
+                email_sent_at       TIMESTAMPTZ,
+                email_last_error    TEXT,
+                reminder_send_status VARCHAR(20),
+                reminder_last_sent_at TIMESTAMPTZ,
+                reminder_count      INT             NOT NULL DEFAULT 0,
+                reminder_last_error TEXT,
                 notes               TEXT,
                 created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                 updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                 deleted_at          TIMESTAMPTZ,
                 CONSTRAINT uq_invoices_number UNIQUE (user_id, invoice_number)
             );
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS payment_link_url TEXT;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS payment_link_status VARCHAR(20) NOT NULL DEFAULT 'not_created';
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS payment_link_generated_at TIMESTAMPTZ;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS payment_link_deactivated_at TIMESTAMPTZ;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS payment_link_error TEXT;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS pdf_file_path TEXT;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS pdf_generated_at TIMESTAMPTZ;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS email_send_status VARCHAR(20);
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS email_last_error TEXT;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS reminder_send_status VARCHAR(20);
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS reminder_last_sent_at TIMESTAMPTZ;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS reminder_count INT NOT NULL DEFAULT 0;
+
+            ALTER TABLE invoices
+                ADD COLUMN IF NOT EXISTS reminder_last_error TEXT;
 
             CREATE INDEX IF NOT EXISTS idx_invoices_user_id
                 ON invoices (user_id) WHERE deleted_at IS NULL;
@@ -225,6 +298,24 @@ public class DatabaseMigrator
                 ON invoices (project_id) WHERE deleted_at IS NULL;
             CREATE INDEX IF NOT EXISTS idx_invoices_status
                 ON invoices (user_id, status, due_date) WHERE deleted_at IS NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_invoices_project_active
+                ON invoices (project_id) WHERE project_id IS NOT NULL AND deleted_at IS NULL;
+
+            CREATE TABLE IF NOT EXISTS invoice_number_counters (
+                user_id         UUID    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                invoice_year    INT     NOT NULL,
+                last_number     INT     NOT NULL DEFAULT 0,
+                updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (user_id, invoice_year)
+            );
+
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_invoice_number_counters_updated_at') THEN
+                    CREATE TRIGGER trg_invoice_number_counters_updated_at
+                        BEFORE UPDATE ON invoice_number_counters
+                        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+                END IF;
+            END $$;
 
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_invoices_updated_at') THEN

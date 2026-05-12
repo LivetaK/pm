@@ -1,3 +1,5 @@
+using pm.Application.DTOs.Invoices;
+
 namespace pm.Application.DTOs.Projects;
 
 public record ProjectResponse(
@@ -20,5 +22,6 @@ public record ProjectResponse(
     DateTime? CompletedAt,
     DateTime? CancelledAt,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    InvoiceResponse? GeneratedInvoice = null
 );

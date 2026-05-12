@@ -25,15 +25,15 @@ The current backend implements two main product areas from the project summary:
 
 - `Vartotojo paskyros valdymas`
 - `Klientų valdymas`
+- `Projekto valdymas`
+- `Projekto eiga`
+- `Mokėjimų procesas` (PDF invoice generation, Stripe checkout link creation, and webhook handling are now available)
 
 It does **not** yet implement:
 
-- `Projekto valdymas`
-- `Projekto eiga`
-- `Mokėjimų procesas` (Stripe checkout link creation + webhook handling are now available)
 - `Statistika`
 
-That means the project currently supports account and client management, but not yet the main MVP flow described in the summary:
+That means the project supports the main backend MVP flow described in the summary:
 
 `projektas -> sąskaita -> apmokėjimas`
 
@@ -52,7 +52,17 @@ Implemented endpoints:
 - `POST /api/v1/clients`
 - `PUT /api/v1/clients/{id}`
 - `DELETE /api/v1/clients/{id}`
+- `PATCH /api/v1/projects/{id}/status`
+- `GET /api/v1/invoices`
+- `GET /api/v1/invoices/{id}`
+- `POST /api/v1/invoices`
+- `PUT /api/v1/invoices/{id}`
+- `POST /api/v1/invoices/{id}/send`
+- `POST /api/v1/invoices/{id}/reminders`
+- `POST /api/v1/invoices/overdue-reminders/process`
+- `GET /api/v1/invoices/{id}/pdf`
 - `POST /api/v1/invoices/{id}/create-payment-link`
+- `GET /api/v1/payments?invoiceId={invoiceId}`
 - `POST /api/v1/payments/webhook`
 
 Main entry point:
@@ -155,6 +165,59 @@ Required `.env` entries:
 - `STRIPE_PUBLISHABLE_KEY` (optional for the current API flow)
 
 The API uses these values to create Stripe Checkout sessions and verify incoming webhook events.
+
+## PDF Invoice Generation
+
+PDF invoice generation is triggered backend-side when a project status is updated to `completed`:
+
+```bash
+PATCH /api/v1/projects/{projectId}/status
+```
+
+with body:
+
+```json
+{ "status": "completed" }
+```
+
+The API validates the persisted project, client, seller, price, VAT rate, currency, and payment terms before creating the invoice. On success it creates an invoice linked to the project and client, assigns a DB-backed unique number in the `INV-{year}-{0000}` format, generates a Lithuanian PDF invoice, stores the PDF reference on the invoice record, and returns the generated invoice in `generatedInvoice`.
+
+Generated PDFs are stored under `InvoicePdf:StorageRoot` when configured, otherwise under `invoice-pdfs` in the API working directory. The database stores the relative `pdf_file_path` and `pdf_generated_at` values. Download or preview the PDF with:
+
+```bash
+GET /api/v1/invoices/{invoiceId}/pdf
+GET /api/v1/invoices/{invoiceId}/pdf?download=true
+```
+
+Schema changes are applied by `DatabaseMigrator`: `invoices.pdf_file_path`, `invoices.pdf_generated_at`, the `invoice_number_counters` table, and a unique active invoice index per project.
+
+## Payment Links, Sending, and Reminders
+
+Payment links are created with:
+
+```bash
+POST /api/v1/invoices/{invoiceId}/create-payment-link
+```
+
+Before calling Stripe, the backend validates that the invoice exists, is not paid/cancelled, has a positive final total, has VAT included in the final amount, and has a currency. The generated Stripe checkout URL is stored on the invoice as `payment_link_url` with `payment_link_status = active`; repeated calls reuse the active stored URL.
+
+Invoice emails are sent with:
+
+```bash
+POST /api/v1/invoices/{invoiceId}/send
+```
+
+This creates/reuses the payment link, attaches the generated PDF, embeds the payment link in the email, marks the invoice as `sent`, and stores email send status/error fields on the invoice.
+
+Overdue invoice reminders are processed automatically by a hosted background worker. The same processing can be triggered manually with:
+
+```bash
+POST /api/v1/invoices/overdue-reminders/process
+```
+
+Invoices past `due_date` with an outstanding balance are marked `overdue`; reminder send status, last sent time, count, and errors are stored on the invoice. The worker is configured through `Reminders:Enabled`, `Reminders:InitialDelayMinutes`, and `Reminders:ScanIntervalMinutes`.
+
+Stripe webhooks update payment records and invoice payment status. Fully paid invoices are marked `paid`, the payment link is marked inactive in the system, and a linked project is moved to `paid`.
 
 Recommended local Stripe test flow:
 
@@ -296,6 +359,19 @@ This section reflects the current backend code in this repository, not the plann
 - `ISKPVM-38 Paskyros informacijos peržiūra`
 - `ISKPVM-63 Pakeistų paskyros duomenų išsaugojimo ir atnaujinimo sistemoje įgyvendinimas`
 - `ISKPVM-25 Kliento informacijos redagavimas ir šalinimas`
+- `ISKPVM-39 Automatinis PDF sąskaitos sugeneravimas`
+- `ISKPVM-75 Inicijuoti sąskaitos sukūrimą pakeitus projekto būseną`
+- `ISKPVM-80 Surinkti ir validuoti sąskaitos duomenis iš DB`
+- `ISKPVM-82 Sugeneruoti ir išsaugoti unikalų sąskaitos numerį`
+- `ISKPVM-86 Sugeneruoti PDF sąskaitą ir pateikti ją sistemoje`
+- `ISKPVM-92 Užtikrinti vienodą galutinės sumos naudojimą PDF ir Stripe` for shared backend amount calculation used by PDF invoices and Stripe checkout amount conversion.
+- `ISKPVM-90 Validuoti sąskaitos duomenis prieš mokėjimo nuorodos generavimą`
+- `ISKPVM-91 Sugeneruoti unikalią Stripe mokėjimo nuorodą ir išsaugoti ją sąskaitoje`
+- `ISKPVM-93 Išsiųsti klientui el. laišką su PDF sąskaita ir mokėjimo nuoroda`
+- `ISKPVM-44 Unikalios mokėjimo nuorodos generavimas`
+- `ISKPVM-41 Sąskaitos siuntimas tiesiai iš sistemos`
+- `ISKPVM-42 Automatiniai priminimai apie sąskaitos apmokėjimo vėlavimą`
+- `ISKPVM-40 Sąskaitų apmokėjimo statusų sekimas`
 
 ### Partially Covered
 
@@ -334,9 +410,6 @@ Additional client-creation gaps against `ISKPVM-23` acceptance criteria:
 - `ISKPVM-21 Automatinis projekto būsenos atnaujinimas`
 - `ISKPVM-27 Projekto informacijos peržiūrėjimas`
 - `ISKPVM-28 Projekto užbaigimas`
-- `ISKPVM-39 Automatinis PDF sąskaitos sugeneravimas`
-- `ISKPVM-40 Sąskaitų apmokėjimo statusų sekimas`
-- `ISKPVM-44 Unikalios mokėjimo nuorodos generavimas`
 - `ISKPVM-83 Sukurti pajamų statistikos pajamų endpointą`
 
 Frontend/UI Jira items are also not covered in this repository, because there is no frontend project at the moment 2026-04-14.
@@ -345,20 +418,16 @@ Frontend/UI Jira items are also not covered in this repository, because there is
 
 The next most valuable improvement, based on the project summary and Jira priorities, is:
 
-- project CRUD with client association and project status
+- statistics endpoints and frontend flows for invoice/payment visibility
 
 Why this is the next step:
 
-- it closes the biggest gap between the current code and the MVP flow
-- it unlocks a believable presentation path beyond account/client management
-- it aligns with the highest-value missing work in `ISKPVM-18`, `ISKPVM-19`, `ISKPVM-20`, `ISKPVM-21`, and `ISKPVM-27`
+- it supports the documented income and payment visibility goals
+- the backend payment lifecycle is present, but there is no frontend in this repository
 
 ## Known Limits
 
-- no automated tests are present in this repository yet
 - no frontend project is present
-- no project entity/module exists yet
-- no invoice generation exists yet
 - Stripe/payment integration is present for Checkout-link creation and webhook handling
 - no statistics endpoint exists yet
 - client validation is currently weaker than Jira acceptance criteria require
@@ -367,4 +436,3 @@ Why this is the next step:
 
 - [`src/pm.API/appsettings.json`](/Users/adojas/RiderProjects/pm/src/pm.API/appsettings.json:1) currently contains the runtime database/JWT configuration used by the API
 - startup currently validates JWT config in [`Program.cs`](/Users/adojas/RiderProjects/pm/src/pm.API/Program.cs:100)
-- I was not able to build/run the API from this Codex environment because `dotnet` is not installed here, so runtime behavior should still be verified locally in Rider or with the `dotnet` CLI

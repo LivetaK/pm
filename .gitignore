@@ -5,3 +5,5 @@ obj/
 *.user
 appsettings.json
 .env
+invoice-pdfs/
+src/pm.API/invoice-pdfs/
