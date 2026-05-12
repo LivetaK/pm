@@ -4,7 +4,9 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
+using pm.API.Services;
 using pm.Application;
+using pm.Application.Exceptions;
 using pm.Application.Settings;
 using pm.Infrastructure;
 
@@ -48,8 +50,11 @@ ValidateJwtSettings(jwtSettings);
 builder.Services.Configure<JwtSettings>(jwtSettingsSection);
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
+builder.Services.Configure<InvoicePdfSettings>(builder.Configuration.GetSection("InvoicePdf"));
+builder.Services.Configure<ReminderSettings>(builder.Configuration.GetSection("Reminders"));
 builder.Services.AddInfrastructure();
 builder.Services.AddApplication();
+builder.Services.AddHostedService<OverdueInvoiceReminderHostedService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -98,6 +103,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+await app.Services.GetRequiredService<DatabaseMigrator>().MigrateAsync();
 await app.Services.GetRequiredService<DemoDataSeeder>().SeedAsync();
 
 app.UseExceptionHandler(appBuilder =>
@@ -109,14 +115,20 @@ app.UseExceptionHandler(appBuilder =>
         {
             UnauthorizedAccessException => (401, ex.Message),
             KeyNotFoundException        => (404, ex.Message),
+            ApiValidationException      => (400, ex.Message),
+            ApiConflictException        => (409, ex.Message),
             InvalidOperationException   => (409, ex.Message),
+            null => (500, "An unexpected error occurred."),
             _ => (500, app.Environment.IsDevelopment()
                     ? $"{ex.GetType().Name}: {ex.Message}"
                     : "An unexpected error occurred.")
         };
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/json";
-        await context.Response.WriteAsJsonAsync(new { error = message });
+        var response = ex is ApiValidationException validation
+            ? new { error = message, errors = validation.Errors }
+            : (object)new { error = message };
+        await context.Response.WriteAsJsonAsync(response);
     });
 });
 
@@ -176,4 +188,3 @@ static string? FindEnvFile()
 
     return null;
 }
-

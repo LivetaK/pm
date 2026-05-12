@@ -12,11 +12,13 @@ public static class DependencyInjection
         Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
 
         services.AddSingleton<DapperContext>();
-services.AddSingleton<DemoDataSeeder>();
+        services.AddSingleton<DatabaseMigrator>();
+        services.AddSingleton<DemoDataSeeder>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IInvoicePdfService, QuestPdfInvoicePdfService>();
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();

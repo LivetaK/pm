@@ -61,11 +61,29 @@ public class InvoicesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("overdue-reminders/process")]
+    public async Task<IActionResult> ProcessOverdueReminders()
+    {
+        var result = await _invoiceService.ProcessOverdueRemindersAsync(GetUserId());
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/create-payment-link")]
     public async Task<IActionResult> CreatePaymentLink(Guid id)
     {
         var url = await _invoiceService.CreatePaymentLinkAsync(GetUserId(), id);
         return Ok(new { url });
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> GetPdf(Guid id, [FromQuery] bool download = false)
+    {
+        var result = await _invoiceService.GetPdfAsync(GetUserId(), id);
+        if (download)
+            return File(result.Content, result.ContentType, result.FileName, enableRangeProcessing: true);
+
+        Response.Headers.ContentDisposition = $"inline; filename=\"{result.FileName}\"";
+        return File(result.Content, result.ContentType, enableRangeProcessing: true);
     }
 
     private Guid GetUserId() =>

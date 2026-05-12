@@ -1,3 +1,4 @@
+using pm.Application.DTOs.Invoices;
 using pm.Application.DTOs.Projects;
 using pm.Application.Interfaces;
 using pm.Domain.Entities;
@@ -17,16 +18,18 @@ public class ProjectService : IProjectService
     };
 
     private readonly IProjectRepository _projectRepository;
+    private readonly IInvoiceService _invoiceService;
 
-    public ProjectService(IProjectRepository projectRepository)
+    public ProjectService(IProjectRepository projectRepository, IInvoiceService invoiceService)
     {
         _projectRepository = projectRepository;
+        _invoiceService = invoiceService;
     }
 
     public async Task<IReadOnlyList<ProjectResponse>> GetAllAsync(Guid userId)
     {
         var projects = await _projectRepository.GetAllByUserIdAsync(userId);
-        return projects.Select(MapToResponse).ToList();
+        return projects.Select(project => MapToResponse(project)).ToList();
     }
 
     public async Task<ProjectResponse> GetByIdAsync(Guid userId, Guid id)
@@ -97,14 +100,19 @@ public class ProjectService : IProjectService
         var newStatus = NormalizeStatus(request.Status);
         var oldStatus = project.Status;
         var now = DateTime.UtcNow;
+        var generatedInvoice = newStatus == "completed"
+            ? await _invoiceService.CreateForCompletedProjectAsync(userId, project.Id)
+            : null;
 
-        project.Status = newStatus;
+        project.Status = generatedInvoice is null ? newStatus : "invoiced";
         project.UpdatedAt = now;
 
         switch (newStatus)
         {
             case "completed":
                 project.WorkCompletedAt ??= now;
+                if (generatedInvoice is not null)
+                    project.InvoicedAt ??= now;
                 break;
             case "invoiced":
                 project.InvoicedAt ??= now;
@@ -119,7 +127,10 @@ public class ProjectService : IProjectService
 
         await _projectRepository.UpdateAsync(project);
         await _projectRepository.AddStatusHistoryAsync(project.Id, userId, oldStatus, newStatus);
-        return MapToResponse(project);
+        if (generatedInvoice is not null)
+            await _projectRepository.AddStatusHistoryAsync(project.Id, userId, newStatus, project.Status);
+
+        return MapToResponse(project, generatedInvoice);
     }
 
     public async Task DeleteAsync(Guid userId, Guid id)
@@ -133,12 +144,12 @@ public class ProjectService : IProjectService
         await _projectRepository.SoftDeleteAsync(userId, id);
     }
 
-    private static ProjectResponse MapToResponse(Project p) =>
+    private static ProjectResponse MapToResponse(Project p, InvoiceResponse? generatedInvoice = null) =>
         new(p.Id, p.UserId, p.ClientId, p.Name, p.Description, p.AgreedScope,
             p.Status, p.PricingType, p.AgreedAmount, p.Currency, p.VatRate,
             p.PaymentTermsDays, p.StartsOn, p.DueOn,
             p.WorkCompletedAt, p.InvoicedAt, p.CompletedAt, p.CancelledAt,
-            p.CreatedAt, p.UpdatedAt);
+            p.CreatedAt, p.UpdatedAt, generatedInvoice);
 
     private static string NormalizeStatus(string status)
     {

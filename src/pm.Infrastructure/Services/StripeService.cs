@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using pm.Application.Interfaces;
+using pm.Application.Services;
 using pm.Application.Settings;
 using pm.Domain.Entities;
 
@@ -18,13 +19,19 @@ namespace pm.Infrastructure.Services
         private readonly StripeSettings _settings;
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly IPaymentRepository _paymentRepository;
+        private readonly IProjectRepository _projectRepository;
         private readonly HttpClient _http;
 
-        public StripeService(IOptions<StripeSettings> settings, IInvoiceRepository invoiceRepository, IPaymentRepository paymentRepository)
+        public StripeService(
+            IOptions<StripeSettings> settings,
+            IInvoiceRepository invoiceRepository,
+            IPaymentRepository paymentRepository,
+            IProjectRepository projectRepository)
         {
             _settings = settings.Value;
             _invoiceRepository = invoiceRepository;
             _paymentRepository = paymentRepository;
+            _projectRepository = projectRepository;
             _http = new HttpClient { BaseAddress = new Uri("https://api.stripe.com/") };
             if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
                 _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
@@ -32,7 +39,7 @@ namespace pm.Infrastructure.Services
 
         public async Task<string> CreateCheckoutSessionAsync(Invoice invoice)
         {
-            var amountMinor = (int)Math.Round(invoice.TotalAmount * 100);
+            var amountMinor = InvoiceAmountCalculator.ToMinorCurrencyUnits(invoice);
             var currency = invoice.Currency?.ToLowerInvariant() ?? "eur";
             var successUrl = string.IsNullOrWhiteSpace(_settings.SuccessUrl)
                 ? "http://localhost:5216/swagger?stripe=success"
@@ -126,6 +133,7 @@ namespace pm.Infrastructure.Services
                     };
                     await _paymentRepository.CreateAsync(payment);
                     await _invoiceRepository.MarkAsPaidAsync(userId, invoiceId, amount, DateTime.UtcNow);
+                    await SynchronizePaidInvoiceAsync(userId, invoiceId);
                 }
             }
             else if (type == "charge.refunded")
@@ -195,6 +203,30 @@ namespace pm.Infrastructure.Services
                     await _paymentRepository.CreateAsync(payment);
                 }
             }
+        }
+
+        private async Task SynchronizePaidInvoiceAsync(Guid userId, Guid invoiceId)
+        {
+            var invoice = await _invoiceRepository.GetByIdAsync(userId, invoiceId);
+            if (invoice?.Status != "paid")
+                return;
+
+            var now = DateTime.UtcNow;
+            await _invoiceRepository.DeactivatePaymentLinkAsync(userId, invoiceId, now);
+
+            if (!invoice.ProjectId.HasValue)
+                return;
+
+            var project = await _projectRepository.GetByIdAsync(userId, invoice.ProjectId.Value);
+            if (project is null || project.Status == "paid")
+                return;
+
+            var oldStatus = project.Status;
+            project.Status = "paid";
+            project.CompletedAt ??= now;
+            project.UpdatedAt = now;
+            await _projectRepository.UpdateAsync(project);
+            await _projectRepository.AddStatusHistoryAsync(project.Id, userId, oldStatus, "paid");
         }
 
         private static bool SecureEquals(string a, string b)
